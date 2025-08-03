@@ -2,28 +2,25 @@ package com.scram.systems.privacyprotection.service
 
 import android.app.NotificationChannel
 import android.app.NotificationManager
-import android.content.Context
 import android.content.Intent
 import android.net.VpnService
-import android.os.Build
 import android.os.ParcelFileDescriptor
 import android.util.Log
 import androidx.core.app.NotificationCompat
 import com.scram.systems.privacyprotection.R
+import androidx.core.content.edit
 
 class DnsVpnService : VpnService() {
 
     companion object {
         // A public constant for the stop action.
         const val ACTION_STOP_VPN = "com.scram.systems.privacyprotection.STOP_VPN"
+        private const val NOTIFICATION_ID = 1
+        private const val NOTIFICATION_CHANNEL_ID = "DnsVpnServiceChannel"
+        private const val PREFS_NAME = "vpn_state_prefs"
+        private const val PREF_KEY_IS_RUNNING = "is_running"
     }
-
-    private val NOTIFICATION_ID = 1
-    private val NOTIFICATION_CHANNEL_ID = "DnsVpnServiceChannel"
-    private val PREFS_NAME = "vpn_state_prefs"
-    private val PREF_KEY_IS_RUNNING = "is_running"
-
-    private val prefs by lazy { getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE) }
+    private val prefs by lazy { getSharedPreferences(PREFS_NAME, MODE_PRIVATE) }
     private var vpnInterface: ParcelFileDescriptor? = null
 
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
@@ -94,23 +91,21 @@ class DnsVpnService : VpnService() {
     }
 
     private fun updateState(isRunning: Boolean) {
-        prefs.edit().putBoolean(PREF_KEY_IS_RUNNING, isRunning).apply()
+        prefs.edit { putBoolean(PREF_KEY_IS_RUNNING, isRunning) }
         VpnState.isVpnActive.value = isRunning
         Log.d("PrivacyApp", "DnsVpnService: Wrote '$isRunning' to SharedPreferences and VpnState.")
     }
 
     private fun createNotificationChannel() {
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
-            val name = "VPN Service Channel"
-            val descriptionText = "Channel for the VPN foreground service notification"
-            val importance = NotificationManager.IMPORTANCE_DEFAULT
-            val channel = NotificationChannel(NOTIFICATION_CHANNEL_ID, name, importance).apply {
-                description = descriptionText
-            }
-            val notificationManager: NotificationManager =
-                getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
-            notificationManager.createNotificationChannel(channel)
+        val name = "VPN Service Channel"
+        val descriptionText = "Channel for the VPN foreground service notification"
+        val importance = NotificationManager.IMPORTANCE_DEFAULT
+        val channel = NotificationChannel(NOTIFICATION_CHANNEL_ID, name, importance).apply {
+            description = descriptionText
         }
+        val notificationManager: NotificationManager =
+            getSystemService(NOTIFICATION_SERVICE) as NotificationManager
+        notificationManager.createNotificationChannel(channel)
     }
 
     override fun onDestroy() {
