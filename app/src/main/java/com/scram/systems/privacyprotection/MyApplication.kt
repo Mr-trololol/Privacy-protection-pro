@@ -1,7 +1,6 @@
 package com.scram.systems.privacyprotection
 
 import android.app.Application
-import android.content.Context
 import android.util.Log
 import com.scram.systems.privacyprotection.service.VpnState
 
@@ -19,7 +18,7 @@ class MyApplication : Application() {
         It ensures our live state is in sync with our persistent state from the moment
         the app process starts.*/
 
-        val prefs = getSharedPreferences("vpn_state_prefs", Context.MODE_PRIVATE)
+        val prefs = getSharedPreferences("vpn_state_prefs", MODE_PRIVATE)
         val isVpnRunning = prefs.getBoolean("is_running", false)
 
         // Update the live state object with the value from persistent storage.
