@@ -10,7 +10,6 @@ import androidx.compose.material3.dynamicLightColorScheme
 import androidx.compose.material3.lightColorScheme
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.SideEffect
-import androidx.compose.ui.graphics.toArgb
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalView
 import androidx.core.view.WindowCompat
@@ -30,6 +29,7 @@ private val LightColorScheme = lightColorScheme(
 @Composable
 fun PrivacyProtectionTheme(
     darkTheme: Boolean = isSystemInDarkTheme(),
+    // Dynamic color is available on Android 12+
     dynamicColor: Boolean = true,
     content: @Composable () -> Unit
 ) {
@@ -45,8 +45,14 @@ fun PrivacyProtectionTheme(
     if (!view.isInEditMode) {
         SideEffect {
             val window = (view.context as Activity).window
-            window.statusBarColor = colorScheme.primary.toArgb()
-            WindowCompat.getInsetsController(window, view).isAppearanceLightStatusBars = darkTheme
+            val insetsController = WindowCompat.getInsetsController(window, view)
+            /* Tells the system that our app will handle drawing behind the system bars.
+            This makes the bars transparent by default. */
+            WindowCompat.setDecorFitsSystemWindows(window, false)
+            /* The deprecated lines have been removed we no longer set the colors directly.
+            We still need to control the color of the system bar icons for contrast.*/
+            insetsController.isAppearanceLightStatusBars = !darkTheme
+            insetsController.isAppearanceLightNavigationBars = !darkTheme
         }
     }
 
