@@ -59,7 +59,20 @@ class MainActivity : ComponentActivity() {
                             stopVpnService()
                         }
                     },
-                    onDnsSelected = { server -> viewModel.onDnsSelected(server) },
+                    //  Running service will receive new intent with new DNS IP upon DNS server change
+                    onDnsSelected = { server ->
+                        viewModel.onDnsSelected(server)
+                        // This condition is true
+                        if (uiState.isVpnActive) {
+                            Log.d("PrivacyApp", "MainActivity: DNS changed while VPN is active. Sending new IP to running service.")
+                            // An Intent is created with the new DNS IP
+                            val intent = Intent(this, DnsVpnService::class.java).apply {
+                                putExtra("DNS_IP", server.primaryIp)
+                            }
+                            // startService is called on the already running service
+                            startService(intent)
+                        }
+                    },
                     // Wire up the new CRUD functions
                     onAddDnsClicked = { viewModel.onAddDnsClicked() },
                     onEditDnsClicked = { server -> viewModel.onEditDnsClicked(server) },
