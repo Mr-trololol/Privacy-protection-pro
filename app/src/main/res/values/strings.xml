@@ -1,3 +1,32 @@
 <resources>
-    <string name="app_name">PrivacyProtection</string>
+    <string name="app_name">Privacy Protection</string>
+
+    <!-- Settings Screen -->
+    <string name="settings_language">Language</string>
+    <string name="settings_language_subtitle">Select application language</string>
+    <string name="settings_about">About</string>
+    <string name="settings_about_subtitle">View app version and licenses</string>
+
+    <!-- Other strings... -->
+    <string name="screen_connect">Connect</string>
+    <string name="screen_firewall">Firewall</string>
+    <string name="screen_settings">Settings</string>
+    <string name="status_connected">Connected via %1$s</string>
+    <string name="status_disconnected">Disconnected</string>
+    <!-- NEW -->
+    <string name="status_firewall_mode">Firewall Mode</string>
+    <string name="dns_provider_label">DNS Provider</string>
+    <string name="select_dns_placeholder">Select DNS</string>
+    <string name="add_custom_dns_button">Add Custom DNS</string>
+    <string name="cd_edit_dns">Edit DNS</string>
+    <string name="cd_delete_dns">Delete DNS</string>
+    <string name="dialog_title_add">Add DNS Server</string>
+    <string name="dialog_title_edit">Edit DNS Server</string>
+    <string name="dialog_name_label">Name</string>
+    <string name="dialog_ip_label">IP Address</string>
+    <string name="dialog_ip_error">Invalid IP address</string>
+    <string name="dialog_button_cancel">Cancel</string>
+    <string name="dialog_button_save">Save</string>
+    <string name="firewall_description">Select apps to block from accessing the internet.</string>
+    <string name="app_icon_content_description">%s app icon</string>
 </resources>

@@ -13,17 +13,23 @@ import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.activity.viewModels
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.core.content.ContextCompat
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.scram.systems.privacyprotection.service.DnsVpnService
+import com.scram.systems.privacyprotection.ui.ConnectViewModel
+import com.scram.systems.privacyprotection.ui.FirewallViewModel
 import com.scram.systems.privacyprotection.ui.MainScreen
-import com.scram.systems.privacyprotection.ui.MainViewModel
 import com.scram.systems.privacyprotection.ui.theme.PrivacyProtectionTheme
 
 class MainActivity : ComponentActivity() {
 
-    private val viewModel: MainViewModel by viewModels()
+    private val connectViewModel: ConnectViewModel by viewModels()
+    private val firewallViewModel: FirewallViewModel by viewModels()
 
     private val notificationPermissionLauncher =
         registerForActivityResult(ActivityResultContracts.RequestPermission()) { isGranted ->
@@ -48,10 +54,37 @@ class MainActivity : ComponentActivity() {
         super.onCreate(savedInstanceState)
         setContent {
             PrivacyProtectionTheme {
-                val uiState by viewModel.uiState.collectAsStateWithLifecycle()
+                val connectUiState by connectViewModel.uiState.collectAsStateWithLifecycle()
+                val firewallUiState by firewallViewModel.uiState.collectAsStateWithLifecycle()
+
+                // This effect will restart the VPN service with new rules
+                // whenever the list of blocked apps or the firewall state changes.
+                val isVpnActive = connectUiState.isVpnActive
+                val blockedApps = (firewallUiState.userApps + firewallUiState.systemApps)
+                    .filter { it.isBlocked }
+                    .map { it.packageName }
+                    .toSet()
+                val isFirewallActive = firewallUiState.isFirewallActive
+
+                var previousBlockedApps by remember { mutableStateOf<Set<String>?>(null) }
+                var previousFirewallState by remember { mutableStateOf<Boolean?>(null) }
+
+                LaunchedEffect(blockedApps, isFirewallActive, isVpnActive) {
+                    val hasBlockedAppsChanged = previousBlockedApps != null && blockedApps != previousBlockedApps
+                    val hasFirewallStateChanged = previousFirewallState != null && isFirewallActive != previousFirewallState
+
+                    if (isVpnActive && (hasBlockedAppsChanged || hasFirewallStateChanged)) {
+                        Log.d("PrivacyApp", "MainActivity: Config changed. Restarting VPN service.")
+                        startVpnService()
+                    }
+                    previousBlockedApps = blockedApps
+                    previousFirewallState = isFirewallActive
+                }
+
 
                 MainScreen(
-                    uiState = uiState,
+                    connectUiState = connectUiState,
+                    firewallUiState = firewallUiState,
                     onVpnToggle = { isActive ->
                         if (isActive) {
                             startVpnFlow()
@@ -59,27 +92,20 @@ class MainActivity : ComponentActivity() {
                             stopVpnService()
                         }
                     },
-                    //  Running service will receive new intent with new DNS IP upon DNS server change
                     onDnsSelected = { server ->
-                        viewModel.onDnsSelected(server)
-                        // This condition is true
-                        if (uiState.isVpnActive) {
-                            Log.d("PrivacyApp", "MainActivity: DNS changed while VPN is active. Sending new IP to running service.")
-                            // An Intent is created with the new DNS IP
-                            val intent = Intent(this, DnsVpnService::class.java).apply {
-                                putExtra("DNS_IP", server.primaryIp)
-                            }
-                            // startService is called on the already running service
-                            startService(intent)
+                        connectViewModel.onDnsSelected(server)
+                        if (connectUiState.isVpnActive) {
+                            Log.d("PrivacyApp", "MainActivity: DNS changed. Restarting service.")
+                            startVpnService()
                         }
                     },
-                    // Wire up the new CRUD functions
-                    onAddDnsClicked = { viewModel.onAddDnsClicked() },
-                    onEditDnsClicked = { server -> viewModel.onEditDnsClicked(server) },
-                    onDeleteDnsClicked = { server -> viewModel.onDeleteDnsClicked(server) },
-                    onSaveDnsServer = { id, name, ip -> viewModel.onSaveDnsServer(id, name, ip) },
-                    onDismissDialog = { viewModel.onDismissDialog() },
-                    isIpValid = { ip -> viewModel.isValidIpAddress(ip) }
+                    onAddDnsClicked = { connectViewModel.onAddDnsClicked() },
+                    onEditDnsClicked = { server -> connectViewModel.onEditDnsClicked(server) },
+                    onDeleteDnsClicked = { server -> connectViewModel.onDeleteDnsClicked(server) },
+                    onSaveDnsServer = { id, name, ip -> connectViewModel.onSaveDnsServer(id, name, ip) },
+                    onDismissDialog = { connectViewModel.onDismissDialog() },
+                    isIpValid = { ip -> connectViewModel.isValidIpAddress(ip) },
+                    firewallActions = firewallViewModel
                 )
             }
         }
@@ -105,13 +131,22 @@ class MainActivity : ComponentActivity() {
     }
 
     private fun startVpnService() {
-        val selectedDnsIp = viewModel.uiState.value.selectedDns?.primaryIp
+        val selectedDnsIp = connectViewModel.uiState.value.selectedDns?.primaryIp
         if (selectedDnsIp == null) {
             Toast.makeText(this, "Please select a DNS server", Toast.LENGTH_SHORT).show()
             return
         }
+
+        // Get the current list of blocked apps from the firewall ViewModel
+        val firewallState = firewallViewModel.uiState.value
+        val blockedApps = (firewallState.userApps + firewallState.systemApps)
+            .filter { it.isBlocked }
+            .map { it.packageName }
+            .let { ArrayList(it) } // Convert to ArrayList for the Intent
+
         val intent = Intent(this, DnsVpnService::class.java).apply {
             putExtra("DNS_IP", selectedDnsIp)
+            putStringArrayListExtra(DnsVpnService.EXTRA_BLOCKED_APPS, blockedApps)
         }
         startService(intent)
     }

@@ -1,6 +1,8 @@
 package com.scram.systems.privacyprotection.ui
 
 import android.app.Application
+import android.net.InetAddresses
+import android.os.Build
 import android.util.Patterns
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
@@ -13,16 +15,17 @@ import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
 
-data class UiState(
+// Renamed to be specific to the Connect screens state
+data class ConnectUiState(
     val dnsServers: List<DnsServer> = emptyList(),
     val selectedDns: DnsServer? = null,
     val isVpnActive: Boolean = false,
-    // To show the dialog and track which server is being edited (null for adding a new one)
     val serverToEdit: DnsServer? = null,
     val showEditDialog: Boolean = false
 )
 
-class MainViewModel(application: Application) : AndroidViewModel(application) {
+// Renamed the class to be more relevant
+class ConnectViewModel(application: Application) : AndroidViewModel(application) {
 
     private val dnsDao = AppDatabase.getDatabase(application).dnsDao()
 
@@ -38,13 +41,12 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
         _serverToEdit,
         _showEditDialog
     ) { servers, isActive, selected, serverToEdit, showDialog ->
-        // If the selected server is deleted, select the first available one.
         val currentSelected = if (servers.contains(selected)) selected else servers.firstOrNull()
         if (selected != currentSelected) {
             _selectedDns.value = currentSelected
         }
 
-        UiState(
+        ConnectUiState(
             dnsServers = servers,
             isVpnActive = isActive,
             selectedDns = currentSelected,
@@ -54,17 +56,14 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
     }.stateIn(
         scope = viewModelScope,
         started = SharingStarted.WhileSubscribed(5000),
-        initialValue = UiState()
+        initialValue = ConnectUiState()
     )
 
     fun onDnsSelected(dnsServer: DnsServer) {
         _selectedDns.value = dnsServer
     }
 
-    // New and Updated Functions for CRUD
-
     fun onAddDnsClicked() {
-        // Set serverToEdit to a blank server to signify "add mode"
         _serverToEdit.value = DnsServer(name = "", primaryIp = "")
         _showEditDialog.value = true
     }
@@ -82,15 +81,13 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
 
     fun onSaveDnsServer(id: Int, name: String, ip: String) {
         if (!isValidIpAddress(ip)) {
-            // We might expose an error state to the UI in future updates, but for now, we just prevent saving.
-            // The UI handles the visual error state.
             return
         }
 
         viewModelScope.launch {
-            if (id == 0) { // New server
+            if (id == 0) {
                 dnsDao.insert(DnsServer(name = name, primaryIp = ip))
-            } else { // Existing server
+            } else {
                 dnsDao.update(DnsServer(id = id, name = name, primaryIp = ip))
             }
         }
@@ -102,10 +99,11 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
         _showEditDialog.value = false
     }
 
-    /**
-     * Validates if the given string is a valid IPv4 address.
-     */
     fun isValidIpAddress(ip: String): Boolean {
-        return Patterns.IP_ADDRESS.matcher(ip).matches()
+        return if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+            InetAddresses.isNumericAddress(ip)
+        } else {
+            Patterns.IP_ADDRESS.matcher(ip).matches()
+        }
     }
 }

@@ -16,12 +16,15 @@ android {
         versionCode = 1
         versionName = "0.1"
 
-        testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
     }
 
     buildTypes {
         release {
-            isMinifyEnabled = false
+            isMinifyEnabled = true
+
+            // Enables resource shrinking.
+            isShrinkResources = true
+
             proguardFiles(
                 getDefaultProguardFile("proguard-android-optimize.txt"),
                 "proguard-rules.pro"
@@ -58,10 +61,12 @@ dependencies {
     debugImplementation(libs.androidx.ui.tooling)
     debugImplementation(libs.androidx.ui.test.manifest)
     implementation("org.jetbrains.kotlinx:kotlinx-coroutines-android:1.10.2")
+    implementation("com.google.accompanist:accompanist-drawablepainter:0.37.3")
+    implementation("androidx.compose.material:material-icons-extended")
 // Or the latest stable version
-   // implementation("androidx.lifecycle:lifecycle-runtime-ktx:2.9.2")
+    // implementation("androidx.lifecycle:lifecycle-runtime-ktx:2.9.2")
 // Or the latest stable version
-   // implementation("androidx.lifecycle:lifecycle-viewmodel-ktx:2.9.2")
+    // implementation("androidx.lifecycle:lifecycle-viewmodel-ktx:2.9.2")
 // Or the latest stable version
     // Use a single version variable for all Room artifacts
     val roomVersion = "2.7.2"
@@ -75,7 +80,6 @@ dependencies {
 
     // For SupportSQLiteDatabase + Kotlin extensions
     implementation("androidx.sqlite:sqlite-ktx:2.5.2")
-
-
-
+    implementation("androidx.preference:preference-ktx:1.2.1")
+    implementation("androidx.lifecycle:lifecycle-viewmodel-compose:2.9.2")
 }
